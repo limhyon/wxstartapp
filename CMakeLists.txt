@@ -1,60 +1,34 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
+PROJECT(wxwidgets_demo)
+SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
 
 # Find wxWidgets and check for required modules
-FIND_PACKAGE(wxWidgets REQUIRED core base)
-IF(wxWidgets_FOUND)
+FIND_PACKAGE(wxWidgets REQUIRED core base gl)
+INCLUDE(${wxWidgets_USE_FILE})
+SET (wxWidgets_WXCONFIG_OPTS "--static=yes")
+# We define the include paths here, our wxstartapp source dir is one,
+# and also the include dirs defined by wxWidgets
+INCLUDE_DIRECTORIES(
+    ${wxstartapp_SOURCE_DIR} 
+    ${wxWidgets_INCLUDE_DIRS}
+)
 
-    # Include wxWidgets macros
-    INCLUDE(${wxWidgets_USE_FILE})
+message("-- Check for GLUT (optional)")
+if (APPLE)
+  add_definitions(-DAPPLE)
+# As Apple default GLUT doesn't support scroll event, we'll use FreeGLUT
+# instead. You can enable this statement, if you have some trouble with it.
+# set(CMAKE_EXE_LINKER_FLAGS "-framework OpenGL -framework GLUT")
+  set(CMAKE_EXE_LINKER_FLAGS "-framework OpenGL")
+  find_package(FREEGLUT REQUIRED)
+else (APPLE) # Linux, not so much
+  find_package(OpenGL REQUIRED)
+  find_package(FREEGLUT REQUIRED)
+  include_directories(${OPENGL_INCLUDE_DIRS} ${FREEGLUT_INCLUDE_DIRS})
+endif (APPLE)
 
-    # Set some specific wx options
-    SET (wxWidgets_WXCONFIG_OPTS "--static=yes")
+ADD_EXECUTABLE(wx_gltest main_gl.cpp)
+TARGET_LINK_LIBRARIES(wx_gltest ${wxWidgets_LIBRARIES} ${OPENGL_LIBRARIES} ${FREEGLUT_LIBRARY})
 
-    # Our project is called 'wxstartup' this is how it will be called in
-    # visual studio, and in our makefiles.
-    PROJECT(wxstartup)
-
-    # We define the include paths here, our wxstartapp source dir is one,
-    # and also the include dirs defined by wxWidgets
-    INCLUDE_DIRECTORIES(
-        ${wxstartapp_SOURCE_DIR} 
-        ${wxWidgets_INCLUDE_DIRS}
-    )
-
-    # For convenience we define the sources as a variable. You can add
-    # header files and cpp / c files and CMake will sort them out
-    # SET(SRCS wxstartapp.cpp )
-    file (GLOB SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-        [^.]*.cpp
-        [^.]*.h
-    )
-
-    # If we build for windows systems, we also include the resource file
-    # containing the manifest, icon and other resources
-    IF(WIN32)
-        SET(SRCS ${SRCS} wxstartapp.rc)
-    ENDIF(WIN32)
-
-    # Here we define the executable wxstartapp.exe or wxstartapp on other systems
-    # the above paths and defines will be used in this build
-    IF(WIN32)
-        ADD_EXECUTABLE(wxstartapp WIN32 ${SRCS})
-        GET_TARGET_PROPERTY(MyExecutable_PATH wxstartapp LOCATION)
-    ENDIF(WIN32)
-
-    # create bundle on apple compiles
-    IF (APPLE)
-        ADD_EXECUTABLE(wxstartapp MACOSX_BUNDLE ${SRCS} )
-    ELSE (APPLE)
-        ADD_EXECUTABLE(wxstartapp ${SRCS} )
-    ENDIF (APPLE)
-
-    # We add to our target 'wxstartapp' the wxWidgets libraries. These are
-    # set for us by the find script. If you need other libraries, you
-    # can add them here as well.
-    TARGET_LINK_LIBRARIES(wxstartapp ${wxWidgets_LIBRARIES} )
-
-ELSE(wxWidgets_FOUND)
-    # For convenience. When we cannot continue, inform the user
-    MESSAGE("wxWidgets not found!")
-ENDIF(wxWidgets_FOUND)
+ADD_EXECUTABLE(wx_hello main.cpp)
+TARGET_LINK_LIBRARIES(wx_hello ${wxWidgets_LIBRARIES})
